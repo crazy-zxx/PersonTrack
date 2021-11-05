@@ -46,15 +46,12 @@ class MainWidget(QMainWindow, Ui_MainWindow):
 
         # 获取格式化的参数
         self.opt = detect.parse_opt()
-
         source = str(self.opt.source)
         self.save_img = not self.opt.nosave and not source.endswith('.txt')  # save inference images
-
-        # Directories
         self.save_dir = increment_path(Path(self.opt.project) / self.opt.name,
                                        exist_ok=self.opt.exist_ok)  # increment run
 
-        # Initialize
+        # 初始化
         self.device = select_device(self.opt.device)
         self.half = self.device.type != 'cpu'  # half precision only supported on CUDA
         cudnn.benchmark = True
@@ -62,7 +59,7 @@ class MainWidget(QMainWindow, Ui_MainWindow):
         # 加载训练好的模型
         self.model = attempt_load(self.opt.weights, map_location=self.device)  # load FP32 model
         self.stride = int(self.model.stride.max())  # model stride
-        # 筛选person
+        # 筛选person类目标
         self.names = ['person']
         if self.half:
             self.model.half()  # to FP16
@@ -72,7 +69,9 @@ class MainWidget(QMainWindow, Ui_MainWindow):
         self.img_out = []
         # 摄像头id
         self.camera_id = '0'
+        # 摄像头对象
         self.cap = None
+        # 视频帧信息
         self.vid_cap_info = []
 
     # 打开文件或摄像头并加载图像数据
@@ -113,7 +112,7 @@ class MainWidget(QMainWindow, Ui_MainWindow):
 
     # 处理图像数据并显示
     def deal(self, dataset, type):
-        # Run inference
+        # 通过模型进行预测
         if self.device.type != 'cpu':
             self.model(
                 torch.zeros(1, 3, *self.imgsz).to(self.device).type_as(next(self.model.parameters())))  # run once
@@ -122,12 +121,12 @@ class MainWidget(QMainWindow, Ui_MainWindow):
         self.img_out.clear()
         flag = 1
         for path, img, im0s, vid_cap in dataset:
+            # 获取视频帧信息
             if flag and type == 'video':
                 flag = 0
                 self.vid_cap_info.append(vid_cap.get(cv2.CAP_PROP_FPS))
                 self.vid_cap_info.append(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
                 self.vid_cap_info.append(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
             t1 = time_sync()
             img = torch.from_numpy(img).to(self.device)
             img = img.half() if self.half else img.float()  # uint8 to fp16/32
@@ -137,7 +136,7 @@ class MainWidget(QMainWindow, Ui_MainWindow):
             t2 = time_sync()
             dt[0] += t2 - t1
 
-            # Inference
+            # 预测
             visualize = increment_path(self.save_dir / Path(path).stem, mkdir=True) if self.opt.visualize else False
             pred = self.model(img, augment=self.opt.augment, visualize=visualize)[0]
             t3 = time_sync()
@@ -148,51 +147,46 @@ class MainWidget(QMainWindow, Ui_MainWindow):
                                        self.opt.agnostic_nms, max_det=self.opt.max_det)
             dt[2] += time_sync() - t3
 
-            # Process predictions
-            for i, det in enumerate(pred):  # per image
+            # 处理预测数据的每一帧图片
+            for i, det in enumerate(pred):
                 seen += 1
-
                 if type in ('image', 'video'):
                     p, s, im0, frame = path, '', im0s.copy(), getattr(dataset, 'frame', 0)
                 else:
                     p, s, im0, frame = path[i], f'{i}: ', im0s[i].copy(), dataset.count
-
                 s += '%gx%g ' % img.shape[2:]  # print string
 
-                # TODO fontsize==>line_width
+                # 绘制目标标识框
                 annotator = Annotator(im0, line_width=self.opt.line_thickness, example=str(self.names))
                 if len(det):
-                    # Rescale boxes from img_size to im0 size
                     det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0.shape).round()
-
-                    n = (det[:, -1] == 0).sum()  # detections per class
-                    s += f"{n} {self.names[0]}{'s' * (n > 1)}, "  # add to string
-
+                    n = (det[:, -1] == 0).sum()
+                    s += f"{n} {self.names[0]}{'s' * (n > 1)}, "
                     # Write results
                     for *xyxy, conf, cls in reversed(det):
-
-                        # Add bbox to image
-                        c = int(cls)  # integer class
+                        c = int(cls)
                         # 只筛选person做标记
                         if c == 0:
                             label = None if self.opt.hide_labels else (
                                 self.names[c] if self.opt.hide_conf else f'{self.names[c]} {conf:.2f}')
+                            # 绘制框
                             annotator.box_label(xyxy, label, color=colors(c, True))
-
-                # Print time (inference-only)
+                # 显示处理耗时
                 print(f'{s}Done. ({t3 - t2:.3f}s)')
                 self.statusbar.showMessage(f'{s}Done. ({t3 - t2:.3f}s)', 0)
 
-                # Stream results
+                # 当前帧图片的处理结果
                 im0 = annotator.result()
 
-                # 保存处理结果，用于保存文件
+                # 保存每一帧的处理结果，用于保存为文件
                 self.img_out.append(im0)
 
+                # 转换颜色空间，通过Qt窗口显示
                 result = cv2.cvtColor(im0, cv2.COLOR_BGR2RGB)
                 QtImg = QtGui.QImage(result, result.shape[1], result.shape[0], result.shape[1] * result.shape[2],
                                      QtGui.QImage.Format_RGB888)
                 self.content.setPixmap(QtGui.QPixmap.fromImage(QtImg))
+                # 等待，避免过快刷新导致窗口卡死，图像无法显示，但是会导致画面卡顿不连续
                 cv2.waitKey(1)
 
     # 打开图片文件
@@ -234,7 +228,7 @@ class MainWidget(QMainWindow, Ui_MainWindow):
 
     # 保存文件
     def save_file(self):
-        # 已经打开了文件才能保存
+        # 有处理的结果数据才能保存
         l = len(self.img_out)
         typeList = ''
         if l == 1:
@@ -253,14 +247,17 @@ class MainWidget(QMainWindow, Ui_MainWindow):
         filenames = os.path.splitext(__fileName)
         if len(filenames) >= 2:
             if l == 1 and filenames[1] in ('.png', '.jpeg', '.jpg', '.bmp'):
+                # 保存图片文件
                 cv2.imwrite(__fileName, self.img_out[0])
                 print(__fileName, " save ok!")
                 # 消息提示窗口
                 QMessageBox.information(self, '提示', '文件保存成功！')
                 self.statusbar.showMessage(__fileName + " save ok!", 0)
             elif l > 1 and filenames[1] in ('.mp4', '.avi'):
+                # 视频文件编码格式
                 fourccs = {'.mp4': cv2.VideoWriter_fourcc(*'MP4V'),
                            '.avi': cv2.VideoWriter_fourcc(*'XVID'),}
+                # 保存视频文件
                 if self.vid_cap_info:
                     video = cv2.VideoWriter(__fileName, fourccs[filenames[1]], int(self.vid_cap_info[0]),
                                             (int(self.vid_cap_info[1]), int(self.vid_cap_info[2])))
