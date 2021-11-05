@@ -18,14 +18,14 @@ from utils.plots import Annotator, colors
 from utils.torch_utils import select_device, time_sync
 
 
-# 面向对象思想，将操作与界面代码分离，此类里只写操作相关的代码
+# 主窗口类
 class MainWidget(QMainWindow, Ui_MainWindow):
     # 类的构造器
     def __init__(self, parent=None):
         # 调用父类初始化
         super(MainWidget, self).__init__(parent)
         # 设置主窗口标签
-        self.setWindowTitle("QMainWindow测试")
+        self.setWindowTitle("人体追踪软件")
         # 窗口界面初始化
         self.setupUi(self)
 
