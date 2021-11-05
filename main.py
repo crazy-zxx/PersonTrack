@@ -17,6 +17,11 @@ from utils.general import check_img_size, non_max_suppression, scale_coords, inc
 from utils.plots import Annotator, colors
 from utils.torch_utils import select_device, time_sync
 
+import warnings
+
+# 忽略警告
+warnings.filterwarnings("ignore")
+
 
 # 主窗口类
 class MainWidget(QMainWindow, Ui_MainWindow):
@@ -46,6 +51,10 @@ class MainWidget(QMainWindow, Ui_MainWindow):
 
         # 获取格式化的参数
         self.opt = detect.parse_opt()
+
+        # 使用我们自己训练的模型
+        self.opt.weights = detect.ROOT / 'best.pt'
+
         source = str(self.opt.source)
         self.save_img = not self.opt.nosave and not source.endswith('.txt')  # save inference images
         self.save_dir = increment_path(Path(self.opt.project) / self.opt.name,
@@ -256,7 +265,7 @@ class MainWidget(QMainWindow, Ui_MainWindow):
             elif l > 1 and filenames[1] in ('.mp4', '.avi'):
                 # 视频文件编码格式
                 fourccs = {'.mp4': cv2.VideoWriter_fourcc(*'MP4V'),
-                           '.avi': cv2.VideoWriter_fourcc(*'XVID'),}
+                           '.avi': cv2.VideoWriter_fourcc(*'XVID'), }
                 # 保存视频文件
                 if self.vid_cap_info:
                     video = cv2.VideoWriter(__fileName, fourccs[filenames[1]], int(self.vid_cap_info[0]),
