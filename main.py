@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QFileDialog
 import detect
 from mainWindow import Ui_MainWindow
 from models.experimental import attempt_load
-from utils.datasets import LoadImages, LoadStreams
+from utils.datasets import LoadImages, LoadStreams, LoadWebcam
 from utils.general import check_img_size, non_max_suppression, scale_coords, increment_path, check_imshow
 from utils.plots import Annotator, colors
 from utils.torch_utils import select_device, time_sync
@@ -98,18 +98,22 @@ class MainWidget(QMainWindow, Ui_MainWindow):
             self.close()
 
         dataset = None
+        # 通过不同的输入源来设置不同的数据加载方式
         if type in ('image', 'video'):
             # 打开文件选择窗口
             __fileName, _ = QFileDialog.getOpenFileName(self, '选择文件', '.', typeList)
             # 文件存在
             if __fileName and os.path.exists(__fileName):
                 #  Dataloader
+                # 一般是直接从文件目录下直接读取图片或者视频数据
                 dataset = LoadImages(__fileName, img_size=self.opt.imgsz, stride=self.stride, auto=True)
             else:
                 return
         elif type == 'camera':
             self.opt.view_img = check_imshow()
             cudnn.benchmark = True  # set True to speed up constant image size inference
+            #  Dataloader
+            # 一般是读取摄像头、网络数数据流
             dataset = LoadStreams(self.camera_id, img_size=self.opt.imgsz, stride=self.stride, auto=True)
             self.cap = dataset.cap
         else:
@@ -119,7 +123,7 @@ class MainWidget(QMainWindow, Ui_MainWindow):
 
         self.deal(dataset, type)
 
-    # 处理图像数据并显示
+    # 处理数据并显示
     def deal(self, dataset, type):
         # 通过模型进行预测
         if self.device.type != 'cpu':
@@ -129,6 +133,7 @@ class MainWidget(QMainWindow, Ui_MainWindow):
 
         self.img_out.clear()
         flag = 1
+        # 处理预测数据的每一帧图片
         for path, img, im0s, vid_cap in dataset:
             # 获取视频帧信息
             if flag and type == 'video':
@@ -139,6 +144,7 @@ class MainWidget(QMainWindow, Ui_MainWindow):
             t1 = time_sync()
             img = torch.from_numpy(img).to(self.device)
             img = img.half() if self.half else img.float()  # uint8 to fp16/32
+            # 归一化
             img = img / 255.0  # 0 - 255 to 0.0 - 1.0
             if len(img.shape) == 3:
                 img = img[None]  # expand for batch dim
@@ -156,7 +162,7 @@ class MainWidget(QMainWindow, Ui_MainWindow):
                                        self.opt.agnostic_nms, max_det=self.opt.max_det)
             dt[2] += time_sync() - t3
 
-            # 处理预测数据的每一帧图片
+            # 对每张图的所有目标进行标识
             for i, det in enumerate(pred):
                 seen += 1
                 if type in ('image', 'video'):
