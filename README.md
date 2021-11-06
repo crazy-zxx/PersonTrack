@@ -3,7 +3,7 @@
 
 # 环境依赖
 ```
-参见requirements.txt
+pip install -r requirements.txt
 ```
 
 # 关于YOLOv5
