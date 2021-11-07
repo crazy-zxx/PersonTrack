@@ -1,0 +1,30 @@
+'''
+该文件是训练数据集时通过参数--data指定的数据集配置文件
+'''
+
+# parent
+# ├── yolov5
+# └── datasets
+#     └── VOC2007
+#     └── VOC2007.yaml
+
+# Train/val/test sets as 
+# 1) dir: path/to/img
+# 2) file: path/to/imgs.txt
+# 3) list: [path/to/imgs1, path/to/imgs2, ..]
+path: ../datasets/VOC2007 
+train: # train images (relative to 'path')  
+  - train.txt
+val: # val images (relative to 'path')  
+  - val.txt
+test: # test images (relative to 'path') (optional)
+  - test.txt
+
+# Classes
+# number of classes
+nc: 1  
+
+# class names
+names: ['person']  
+
+
