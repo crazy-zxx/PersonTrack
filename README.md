@@ -5,7 +5,21 @@
 ```
 pip install -r requirements.txt
 ```
-
+---
+# 数据集
+```
+http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtrainval_06-Nov-2007.tar
+http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtest_06-Nov-2007.tar
+```
+# 数据集处理脚本
+```
+datasetProcess/voc2yolov5.py
+```
+# 使用数据集训练模型
+```
+python train.py --img 640 --batch 16 --epochs 100 --data VOC2007.yaml --weights yolov5s.pt
+```
+----
 # 关于YOLOv5
 <div align="center">
 <p>
