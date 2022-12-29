@@ -36,4 +36,4 @@ seaborn>=0.11.0
 # roboflow
 thop>=0.0.31-2005241907
 
-yaml>=0.2.5
+pyyaml>=0.2.5
